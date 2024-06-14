@@ -55,11 +55,23 @@ const options = commandLineArgs([
     baseUrl = path.join(process.cwd(), input);
   }
 
-  const mdownFile = fs.readFileSync(input);
-  const html = marked(mdownFile.toString(), {
+  const renderer = new marked.Renderer({
     breaks: true,
     gfm: true,
-    baseUrl,
+    baseUrl
+  });
+
+ renderer.code = (code, language) => {
+    if (language === 'mermaid') {
+      return `<div class="mermaid">${code}</div>`;
+    }
+
+    return `<pre><code class="language-${language}">${code}</code></pre>`;
+  };
+
+  const mdownFile = fs.readFileSync(input);
+  const html = marked(mdownFile.toString(), {
+    renderer
   });
   const template = fs.readFileSync(path.resolve(__dirname, 'template.html'));
 
