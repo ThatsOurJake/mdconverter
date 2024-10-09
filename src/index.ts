@@ -1,9 +1,13 @@
 import fs from 'fs';
-import { marked } from 'marked';
+import { Marked } from 'marked';
+import he from 'he';
+import { baseUrl as baseUrlExt } from 'marked-base-url';
+import { createDirectives, presetDirectiveConfigs } from 'marked-directive';
 import { load } from 'cheerio';
 import path from 'path';
 import commandLineArgs from 'command-line-args';
 import puppeteer from 'puppeteer';
+import fm from 'front-matter';
 
 interface Options {
   input: string;
@@ -55,31 +59,71 @@ const options = commandLineArgs([
     baseUrl = path.join(process.cwd(), input);
   }
 
-  const renderer = new marked.Renderer({
+  const marked = new Marked({
     breaks: true,
     gfm: true,
-    baseUrl
   });
 
- renderer.code = (code, language) => {
-    if (language === 'mermaid') {
-      return `<div class="mermaid">${code}</div>`;
-    }
+  const markdownHeaderProps: Record<string, string> = {};
 
-    return `<pre><code class="language-${language}">${code}</code></pre>`;
-  };
+  marked.use(
+    {
+      hooks: {
+        preprocess(markdown) {
+          const { attributes, body } = fm<Record<string, string>>(markdown);
+          
+          for (const key in attributes) {
+            if (key in attributes) {
+              markdownHeaderProps[key] = attributes[key];
+            }
+          }
+
+          return body;
+        },
+      }
+    },
+    baseUrlExt(baseUrl),
+    {
+      renderer: {
+        code: code => {
+          if (code.lang === 'mermaid') {
+            return `<div class="mermaid">${code.text}</div>`;
+          }
+  
+          return `<pre><code class="language-${code.lang}">${code.text}</code></pre>`;
+        }
+      }
+    },
+    createDirectives([
+      ...presetDirectiveConfigs,
+      {
+        level: 'block',
+        marker: '::',
+        renderer: (token) => {
+          if (token.meta.name === 'pagebreak') {
+            return '<div class="pagebreak"></div>';
+          }
+  
+          return false;
+        }
+      }
+    ]),
+  );
 
   const mdownFile = fs.readFileSync(input);
-  const html = marked(mdownFile.toString(), {
-    renderer
-  });
+  const html = await marked.parse(mdownFile.toString());
+
   const template = fs.readFileSync(path.resolve(__dirname, 'template.html'));
 
   const $ = load(template);
+  $('title').text(markdownHeaderProps.title || 'Document');
   $('#container').append(html);
 
+  const pageHtml = $.html();
+  const decodedHtml = he.decode(pageHtml);
+
   if (outputFormat === ValidOutputs.HTML) {
-    fs.writeFileSync(output, $.html());
+    fs.writeFileSync(output, decodedHtml);
   } else if (outputFormat === ValidOutputs.PDF) {
     const tempDir = path.resolve(__dirname, 'temp');
 
@@ -89,7 +133,7 @@ const options = commandLineArgs([
 
     const temp = path.join(tempDir,  'temp.html');
 
-    fs.writeFileSync(temp, $.html());
+    fs.writeFileSync(temp, decodedHtml);
 
     const browser = await puppeteer.launch({
       headless: true
