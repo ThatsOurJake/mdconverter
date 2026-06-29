@@ -8,6 +8,7 @@ import path from 'path';
 import commandLineArgs from 'command-line-args';
 import puppeteer from 'puppeteer';
 import fm from 'front-matter';
+import { createTableWidthPlugin } from './table-width-plugin';
 
 interface Options {
   input: string;
@@ -34,7 +35,7 @@ const options = commandLineArgs([
 
 (async () => {
   const { input, output } = options;
-  
+
   if (!fs.existsSync(input)) {
     console.error('Input does not exist');
     return;
@@ -44,7 +45,7 @@ const options = commandLineArgs([
   let outputFormat: ValidOutputs = ValidOutputs.HTML;
 
   if (ext) {
-    switch(ext.toLocaleLowerCase()) {
+    switch (ext.toLocaleLowerCase()) {
       case '.pdf':
         outputFormat = ValidOutputs.PDF
         break;
@@ -71,7 +72,7 @@ const options = commandLineArgs([
       hooks: {
         preprocess(markdown) {
           const { attributes, body } = fm<Record<string, string>>(markdown);
-          
+
           for (const key in attributes) {
             if (key in attributes) {
               markdownHeaderProps[key] = attributes[key];
@@ -82,6 +83,7 @@ const options = commandLineArgs([
         },
       }
     },
+    createTableWidthPlugin(),
     baseUrlExt(baseUrl),
     {
       renderer: {
@@ -89,7 +91,7 @@ const options = commandLineArgs([
           if (code.lang === 'mermaid') {
             return `<div class="mermaid">${code.text}</div>`;
           }
-  
+
           return `<pre><code class="language-${code.lang}">${code.text}</code></pre>`;
         }
       }
@@ -103,7 +105,7 @@ const options = commandLineArgs([
           if (token.meta.name === 'pagebreak') {
             return '<div class="pagebreak"></div>';
           }
-  
+
           return false;
         }
       }
@@ -131,7 +133,7 @@ const options = commandLineArgs([
       fs.mkdirSync(tempDir);
     }
 
-    const temp = path.join(tempDir,  'temp.html');
+    const temp = path.join(tempDir, 'temp.html');
 
     fs.writeFileSync(temp, decodedHtml);
 
