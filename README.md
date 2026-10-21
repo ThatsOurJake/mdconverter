@@ -3,9 +3,9 @@ Convert Markdown files to PDFs or Html files
 
 ### Install
 ```
-yarn
-yarn build
-yarn link
+pnpm install
+pnpm run build
+pnpm link --global
 ```
 
 ### Usage

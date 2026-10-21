@@ -23,9 +23,10 @@
     "./bin/*",
     "./lib/*"
   ],
+  "packageManager": "pnpm@12.14.0",
   "typings": "./lib/index.d.ts",
   "scripts": {
-    "build": "tsc && yarn copy:template",
+    "build": "tsc && pnpm run copy:template",
     "copy:template": "cp ./src/template.html ./lib/template.html",
     "lint": "tslint -c tslint.json src/**/*.ts",
     "dev": "ts-node src/index.ts"
