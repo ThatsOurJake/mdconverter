@@ -90,11 +90,19 @@ const options = commandLineArgs([
     {
       renderer: {
         code: (code) => {
-          if (code.lang === "mermaid") {
-            return `<div class="mermaid">${code.text}</div>`;
+          const language = (code.lang || "").trim().toLowerCase();
+          const escapedCode = he.encode(code.text);
+
+          if (language === "mermaid") {
+            return `<div class="mermaid">${escapedCode}</div>`;
           }
 
-          return `<pre><code class="language-${code.lang}">${code.text}</code></pre>`;
+          const safeLanguageClass = language.replace(/[^\w-]/g, "");
+          const className = safeLanguageClass
+            ? ` class="language-${safeLanguageClass}"`
+            : "";
+
+          return `<pre><code${className}>${escapedCode}</code></pre>`;
         },
       },
     },
@@ -124,10 +132,9 @@ const options = commandLineArgs([
   $("#container").append(html);
 
   const pageHtml = $.html();
-  const decodedHtml = he.decode(pageHtml);
 
   if (outputFormat === ValidOutputs.HTML) {
-    fs.writeFileSync(output, decodedHtml);
+    fs.writeFileSync(output, pageHtml);
   } else if (outputFormat === ValidOutputs.PDF) {
     const tempDir = path.resolve(__dirname, "temp");
 
@@ -137,7 +144,7 @@ const options = commandLineArgs([
 
     const temp = path.join(tempDir, "temp.html");
 
-    fs.writeFileSync(temp, decodedHtml);
+    fs.writeFileSync(temp, pageHtml);
 
     const browser = await puppeteer.launch({
       headless: true,
