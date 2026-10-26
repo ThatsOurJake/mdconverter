@@ -192,13 +192,28 @@ const options = commandLineArgs([
     await page.goto(`file://${temp}`, {
       waitUntil: "networkidle2",
     });
+    await page
+      .waitForFunction('document.body.dataset.ready === "true"', {
+        timeout: 15000,
+      })
+      .catch(() => console.warn("Fonts/diagrams did not finish loading"));
+
+    const documentTitle = he.escape(markdownHeaderProps.title || "");
+    const chromeStyle =
+      "width:100%;padding:0 18mm;font-size:8px;color:#7b8794;font-family:Helvetica,Arial,sans-serif;";
+
     await page.pdf({
       path: output,
       format: "a4",
       printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="${chromeStyle}">${documentTitle}</div>`,
+      footerTemplate: `<div style="${chromeStyle}text-align:right;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>`,
       margin: {
-        top: 24,
-        bottom: 24,
+        top: "22mm",
+        bottom: "20mm",
+        left: "18mm",
+        right: "18mm",
       },
     });
     await browser.close();
